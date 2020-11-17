@@ -6,7 +6,7 @@ pub enum BoundaryBlock {
     Void,
     Wrap,
     Infinite,
-    Static(Option<String>) // TODO state arg
+    Static(Option<String>)
 }
 impl TryFrom<LoafPair<'_>> for BoundaryBlock {
     type Error = ParseError;
