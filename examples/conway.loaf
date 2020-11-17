@@ -1,0 +1,13 @@
+environment := 2D::(* = 100)
+neighborhood := VON_NEUMANN
+boundaries := static::(Dead)
+
+states := {
+    Alive::(color="black")
+    Dead::(default, color="white")
+}
+
+rules := { 
+    from Dead to Alive := neighborhood(Alive) = 3
+    from Alive to Dead := neighborhood(Alive) < 2 or neighborhood(Alive) > 3
+}
