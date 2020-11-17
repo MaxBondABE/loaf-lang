@@ -6,8 +6,10 @@ use crate::lang::ProgramBuilder;
 use std::convert::TryInto;
 use std::num::ParseIntError;
 
+pub mod blocks;
+
 #[derive(Parser)]
-#[grammar="lang/loaf.pest"]
+#[grammar="lang/parse/loaf.pest"]
 pub(crate) struct LoafParser;
 pub(crate) type LoafPair<'a> = Pair<'a, Rule>;
 pub(crate) type LoafPairs<'a> = Pairs<'a, Rule>;
@@ -64,43 +66,3 @@ impl From<PestError<Rule>> for Error {
 impl From<ParseIntError> for Error {
     fn from(error: ParseIntError) -> Self { Self::UnrepresentableNumber(error) }
 }
-
-/*
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::lang::blocks::boundary::BoundaryBlock;
-
-    #[test]
-    pub fn try_parsing() {
-        let program = parse(r#"
-        environment := 3D::(*=10)
-        boundary := static
-        neighborhood := {
-            * within 10
-            x +- 2
-            z - 1
-            y + 0
-        }
-        state := {
-            StateA
-            StateB::(default)
-            StateC::(color="white")
-            StateD::(color=#010203)
-        }
-        rule := {
-            from A to B := 1 > 0
-        }
-        "#);
-        if let Err(e) = program {
-            println!("Error");
-            if let Error::SyntaxError(e) = e {
-                println!("{}", e);
-            }
-        } else {
-            println!("Okay");
-            println!("{:?}", program.unwrap());
-            //assert_eq!(program.unwrap(), Boundary::Void)
-        }
-    }
-}*/

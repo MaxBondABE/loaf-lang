@@ -124,7 +124,6 @@ mod test {
     use crate::lang::parse::LoafParser;
     use pest::Parser;
     use std::convert::TryInto;
-    use crate::lang::blocks::rule::RuleTerminal::Census;
 
     #[test]
     fn simple_eq() {

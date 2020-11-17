@@ -1,11 +1,10 @@
-use crate::lang::blocks::boundary::BoundaryBlock;
-use crate::lang::blocks::neighborhood::NeighborhoodBlock;
-use crate::lang::blocks::environment::EnvironmentBlock;
-use crate::lang::blocks::state::StatesBlock;
-use crate::lang::blocks::rule::RulesBlock;
+use crate::lang::parse::blocks::boundary::BoundaryBlock;
+use crate::lang::parse::blocks::neighborhood::NeighborhoodBlock;
+use crate::lang::parse::blocks::environment::EnvironmentBlock;
+use crate::lang::parse::blocks::state::StatesBlock;
+use crate::lang::parse::blocks::rule::RulesBlock;
 
 pub mod parse;
-pub mod blocks;
 
 #[derive(Debug)]
 pub struct ProgramBuilder {
