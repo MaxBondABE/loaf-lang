@@ -1,0 +1,152 @@
+// Shared Utilities
+
+WHITESPACE = _{ " " | "\t" }
+
+name = ${ LETTER+ }
+integer = ${ ASCII_DIGIT+ }
+x_dimension = { ^"x" }
+y_dimension = { ^"y" }
+z_dimension = { ^"z" }
+all_dimensions = { "*" }
+dimension = _{ x_dimension | y_dimension | z_dimension | all_dimensions }
+
+plus = { "+" }
+minus = { "-" }
+mul = { "*" }
+div = { "/" }
+arithmetic_op = _{ plus | minus | mul | div }
+
+gt = { ">" }
+lt = { "<" }
+gte = { ">=" }
+lte = { "<=" }
+equal = { "=" } // the eq symbol is silent
+not_equal = { "!=" }
+comparison_op = _{ gte | lte | gt | lt | equal | not_equal }
+
+and = { "and" }
+or = { "or" }
+logic_op = _{ and | or }
+
+// Silenced Syntax Elements
+gets = _{ ":=" }
+with = _{ "::" }
+eq = _{ "=" }
+lp = _{ "(" }
+rp = _{ ")" }
+lb = _{ "{" }
+rb = _{ "}" }
+quote = _{ "\"" }
+newline = _{ NEWLINE }
+comma = _{ "," }
+
+// Blocks
+
+env_blk_name = _{ "environment" }
+neighborhood_blk_name = _{ "neighborhood" }
+boundary_blk_name = _{ "boundary" }
+states_blk_name = _{ "state" }
+rules_blk_name = _{ "rule" }
+
+end_of_block = _{ newline | EOI }
+
+// Environment Block
+env_1D = { ^"1D" }
+env_2D = { ^"2D" }
+env_3D = { ^"3D" }
+env_dimension = { dimension ~ eq ~ integer}
+env_arguments = { with ~ lp ~ (env_dimension ~ (comma ~ env_dimension)*)? ~ rp }
+builtin_environments = { (env_1D | env_2D | env_3D) ~ env_arguments? }
+
+edge = { "1" }
+no_edge = { "0" }
+row = { (edge | no_edge)+ ~ newline }
+adjacency_matrix = { lb ~ row+ ~ rb }
+environment_block = { env_blk_name ~ gets ~ (builtin_environments|adjacency_matrix) ~ end_of_block }
+
+// Neighborhood Block
+// Builtin Neighborhoods
+moore_neighborhood = { ^"MOORE" }
+von_neumann_neighborhood = { ^"VON_NEUMANN" }
+builtin_neighborhood = _{ moore_neighborhood | von_neumann_neighborhood }
+
+// Neighborhood Definition Rules
+undirected_name = _{ "+-" }
+directed_positive_name = _{ "+" }
+directed_negative_name = _{ "-" }
+within = _{ ^"within" }
+directed_positive = { dimension ~ directed_positive_name ~ integer }
+directed_negative = { dimension ~ directed_negative_name ~ integer }
+directed_edge = _{ directed_positive | directed_negative }
+undirected_edge = { dimension ~ undirected_name ~ integer }
+undirected_circle = { dimension ~ within ~ integer }
+neighborhood_rule = _{ directed_edge | undirected_edge | undirected_circle }
+neighborhood_rules = { neighborhood_rule ~ (newline+ ~ neighborhood_rule)* }
+
+neighborhood_block = {
+    neighborhood_blk_name ~ gets ~ (
+        builtin_neighborhood |
+        (lb ~ newline* ~ neighborhood_rules ~ newline* ~ rb ~ end_of_block)
+    )
+}
+
+// Boundaries Block
+void_boundary = { ^"void" }
+wrap_boundary = { ^"wrap" }
+static_boundary = { ^"static" ~ (with ~ lp ~ name ~ rp)?}
+infinite_boundary = { ^"infinite" }
+boundary = _{ void_boundary | wrap_boundary | static_boundary | infinite_boundary }
+boundary_block = { boundary_blk_name ~ gets ~ boundary ~ end_of_block }
+
+// State Block
+default_attribute = { "default" }
+color_attribute = { "color" ~ "=" ~ (rgb | quote ~ name ~ quote)}
+other_attribute = { name ~ (eq ~ (attr_argument))? }
+attr_argument = ${ quote ~ name ~ quote }
+hash = _{ "#" }
+rgb = ${ hash ~ ASCII_HEX_DIGIT{6} }
+attribute = _{
+    default_attribute |
+    color_attribute |
+    other_attribute
+}
+attributes = _{ with ~ lp ~ (attribute ~ (comma ~ attribute)*)? ~ rp }
+
+state = { name ~ attributes? }
+state_block = { states_blk_name ~ gets ~ lb ~ newline* ~ state ~ (newline ~ state)* ~ newline* ~ rb ~ end_of_block }
+
+from = _{ "from" }
+to = _{ "to" }
+neighborhood = _{ "neighborhood" }
+from_state = { name }
+to_state = { name }
+census = { neighborhood ~ lp ~ name ~ rp }
+rule_statement_terminal = _{ integer | census }
+rule_parenthetical = _{ lp ~ rule_statement ~ rp }
+rule_statement = {
+    (
+        (rule_statement_terminal | rule_parenthetical) ~
+        (
+            (arithmetic_op | comparison_op | logic_op) ~
+            (rule_statement_terminal | rule_statement)
+        )*
+    ) |
+    rule_parenthetical
+}
+rule = { from ~ from_state ~ to ~ to_state ~ gets ~ rule_statement }
+rule_block = { rules_blk_name ~ gets ~ lb ~ newline* ~ rule ~ (newline ~ rule)* ~ newline* ~ rb ~ end_of_block }
+
+// Main
+
+start = _{ SOI ~ newline* }
+end = _{ newline* ~ EOI }
+program = _{
+    start ~ (
+        environment_block |
+        neighborhood_block |
+        boundary_block |
+        state_block |
+        rule_block
+    )* ~
+    end
+}
