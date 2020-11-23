@@ -40,9 +40,9 @@ impl TryFrom<LoafPair<'_>> for NeighborhoodBlock {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum NeighborhoodRule {
-    UndirectedEdge {dimension: Dimension, magnitude: usize},
-    DirectedEdge { dimension: Dimension, magnitude: usize, direction: EdgeDirection},
-    UndirectedCircle {dimension: Dimension, magnitude: usize}
+    UndirectedEdge {dimension: Dimension, magnitude: isize},
+    DirectedEdge { dimension: Dimension, magnitude: isize},
+    UndirectedCircle {dimension: Dimension, magnitude: isize}
 }
 impl TryFrom<LoafPair<'_>> for NeighborhoodRule {
     type Error = ParseError;
@@ -52,15 +52,15 @@ impl TryFrom<LoafPair<'_>> for NeighborhoodRule {
         let mut children = pair.into_inner();
         let dimension: Dimension = children
             .next().expect("Neighborhood rules should have exactly 2 children.").try_into()?;
-        let magnitude = usize::from_str(
+        let magnitude = isize::from_str(
             children
                 .next().expect("Neighborhood rules should have exactly 2 children.").as_str()
         )?;
         match rule {
             Rule::directed_positive => Ok(Self::DirectedEdge
-                {dimension, magnitude, direction: EdgeDirection::Positive}),
+                {dimension, magnitude}),
             Rule::directed_negative => Ok(Self::DirectedEdge
-                {dimension, magnitude, direction: EdgeDirection::Negative}),
+                {dimension, magnitude: -1 * magnitude}),
             Rule::undirected_edge => Ok(Self::UndirectedEdge {dimension, magnitude}),
             Rule::undirected_circle => Ok(Self::UndirectedCircle {dimension, magnitude}),
             _ => unreachable!()
@@ -88,12 +88,6 @@ impl TryFrom<LoafPair<'_>> for Dimension {
             _ => unreachable!()
         }
     }
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum EdgeDirection {
-    Positive,
-    Negative
 }
 
 #[cfg(test)]
@@ -131,7 +125,6 @@ mod test {
             NeighborhoodRule::DirectedEdge {
                 dimension: Dimension::X,
                 magnitude: 1,
-                direction: EdgeDirection::Positive
             }
         )))
     }
@@ -145,8 +138,7 @@ mod test {
         assert_eq!(nb.unwrap(), NeighborhoodBlock::Custom(vec!(
             NeighborhoodRule::DirectedEdge {
                 dimension: Dimension::X,
-                magnitude: 1,
-                direction: EdgeDirection::Negative
+                magnitude: -1,
             }
         )))
     }
@@ -161,7 +153,6 @@ mod test {
             NeighborhoodRule::DirectedEdge {
                 dimension: Dimension::All,
                 magnitude: 1,
-                direction: EdgeDirection::Positive
             }
         )))
     }
@@ -175,8 +166,7 @@ mod test {
         assert_eq!(nb.unwrap(), NeighborhoodBlock::Custom(vec!(
             NeighborhoodRule::DirectedEdge {
                 dimension: Dimension::All,
-                magnitude: 1,
-                direction: EdgeDirection::Negative
+                magnitude: -1,
             }
         )))
     }
