@@ -5,6 +5,7 @@ use crate::lang::parse::blocks::state::StatesBlock;
 use crate::lang::parse::blocks::rule::RulesBlock;
 
 pub mod parse;
+pub mod runtime;
 
 #[derive(Debug)]
 pub struct ProgramBuilder {
