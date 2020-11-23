@@ -24,7 +24,7 @@ impl Coordinate {
     }
     pub fn add_y(&self, magnitude: isize) -> Self {
         match self {
-            Coordinate1D { .. } => panic!("Illegal coordinate operation"),
+            Coordinate1D { .. } => panic!("Illegal coordinate operation: 1D coordinate has no Y value"),
             Coordinate2D { x, y } => {
                 Coordinate2D { x: *x, y: y + magnitude }
             }
@@ -35,8 +35,8 @@ impl Coordinate {
     }
     pub fn add_z(&self, magnitude: isize) -> Self {
         match self {
-            Coordinate1D { .. } => panic!("Illegal coordinate operation"),
-            Coordinate2D { .. }  => panic!("Illegal coordinate operation"),
+            Coordinate1D { .. } => panic!("Illegal coordinate operation: 1D coordinate has no Z value"),
+            Coordinate2D { .. }  => panic!("Illegal coordinate operation: 2D coordinate has no Z value"),
             Coordinate3D { x, y, z } => {
                 Coordinate3D { x: *x, y: *y, z: z + magnitude }
             }
@@ -77,7 +77,7 @@ impl Coordinate {
     }
     pub fn sub_y(&self, magnitude: isize) -> Self {
         match self {
-            Coordinate1D { .. } => panic!("Illegal coordinate operation"),
+            Coordinate1D { .. } => panic!("Illegal coordinate operation: 1D coordinate has no Y value"),
             Coordinate2D { x, y } => {
                 Coordinate2D { x: *x, y: y - magnitude }
             }
@@ -88,8 +88,8 @@ impl Coordinate {
     }
     pub fn sub_z(&self, magnitude: isize) -> Self {
         match self {
-            Coordinate1D { .. } => panic!("Illegal coordinate operation"),
-            Coordinate2D { .. } => panic!("Illegal coordinate operation"),
+            Coordinate1D { .. } => panic!("Illegal coordinate operation: 1D coordinate has no Z value"),
+            Coordinate2D { .. } => panic!("Illegal coordinate operation: 2D coordinate has no Z value"),
             Coordinate3D { x, y, z } => {
                 Coordinate3D { x: *x, y: *y, z: z - magnitude }
             }
