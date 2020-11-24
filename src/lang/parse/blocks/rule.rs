@@ -20,6 +20,7 @@ lazy_static!(
     };
 );
 
+// TODO use iterative rather than recursive algorithm
 fn build_ast(expression: LoafPairs) -> Box<RuleASTNode> {
     PRECEDENCE_CLIMBER.climb(
         expression,
@@ -57,6 +58,10 @@ fn build_ast(expression: LoafPairs) -> Box<RuleASTNode> {
 pub struct RulesBlock {
     rules: Vec<TransitionRule>
 }
+impl RulesBlock {
+    pub fn new(rules: Vec<TransitionRule>) -> Self { Self { rules } }
+    pub fn into_vec(self) -> Vec<TransitionRule> { self.rules }
+}
 impl TryFrom<LoafPair<'_>> for RulesBlock {
     type Error = ParseError;
 
@@ -75,7 +80,7 @@ impl TryFrom<LoafPair<'_>> for RulesBlock {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-struct TransitionRule {
+pub struct TransitionRule {
     pub from: String,
     pub to: String,
     pub root: Box<RuleASTNode>
