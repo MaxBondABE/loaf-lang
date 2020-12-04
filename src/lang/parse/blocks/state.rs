@@ -18,6 +18,13 @@ const BUILTIN_COLORS: [(&str, (u8, u8, u8)); NUM_COLORS] = [
 pub struct StatesBlock {
     states: HashMap<String, Vec<Attribute>>
 }
+
+impl StatesBlock {
+    pub fn into_map(self) -> HashMap<String, Vec<Attribute>> {
+        self.states
+    }
+}
+
 impl TryFrom<LoafPair<'_>> for StatesBlock {
     type Error = ParseError;
 
