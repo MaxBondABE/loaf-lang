@@ -55,6 +55,15 @@ pub enum Attribute {
     Color(Option<(u8, u8, u8)>), // None for unknown colors - which is a warning, not an error
     //Other(String, Option(String)) // For future features, plugins, alternative renderers, etc
 }
+
+impl Attribute {
+    pub fn is_color(&self) -> bool {
+        match self {
+            Attribute::Color(c) => c.is_some(),
+            _ => false
+        }
+    }
+}
 impl TryFrom<LoafPair<'_>> for Attribute {
     type Error = ParseError;
 

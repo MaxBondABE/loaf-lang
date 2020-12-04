@@ -28,7 +28,7 @@ impl Runtime {
     pub fn new(initial_dimensions: DimensionBounds, boundary: BoundaryBlock, states: States, rules: Rules, neighborhood: Neighborhood) -> Self {
         let mut static_state = None;
         if let Some(name) = boundary.is_static() {
-            static_state = Some(*states.state_map().get(name).expect("States map is complete."))
+            static_state = Some(*states.name_map().get(name).expect("States map is complete."))
         }
         let default_state = states.default_state();
         Self {
@@ -340,6 +340,7 @@ mod test {
             States::new(
                 2,
                 state_map.clone(),
+                HashMap::new(),
                 None,
             ),
             Rules::new(
@@ -377,6 +378,7 @@ mod test {
             States::new(
                 2,
                 state_map.clone(),
+                HashMap::new(),
                 Some(0),
             ),
             Rules::new(
@@ -423,6 +425,7 @@ mod test {
             States::new(
                 2,
                 state_map.clone(),
+                HashMap::new(),
                 Some(0),
             ),
             Rules::new(
