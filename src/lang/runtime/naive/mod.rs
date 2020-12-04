@@ -2,6 +2,9 @@ use crate::lang::runtime::naive::Coordinate::{Coordinate1D, Coordinate2D, Coordi
 
 mod ops;
 
+pub(crate) type StateId = usize;
+type StateMap = HashMap<String, StateId>;
+
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
 pub enum Coordinate {
     Coordinate1D {x: isize},

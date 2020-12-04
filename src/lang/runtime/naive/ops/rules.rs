@@ -1,9 +1,10 @@
 use crate::lang::parse::blocks::rule::{RulesBlock, RuleASTNode, RuleTerminal};
 use crate::lang::runtime::naive::ops::rules::RuleValue::{Boolean, Number};
-use crate::lang::runtime::naive::ops::{StateId, StateMap, ToState, FromState};
+use crate::lang::runtime::naive::ops::{ToState, FromState};
 use std::ops::{Add, Sub, Mul, Div};
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use crate::lang::runtime::naive::{StateMap, StateId};
 
 pub struct Rules {
     rules: HashMap<FromState, Vec<(ToState, Box<dyn RuleOperation>)>>
