@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::lang::parse::blocks::boundary::BoundaryBlock;
+use crate::{lang::parse::blocks::boundary::BoundaryBlock, render::Delta};
 use crate::lang::runtime::StateId;
 use crate::lang::runtime::StateMap;
 use crate::lang::runtime::ops::rules::Rules;
@@ -13,7 +13,9 @@ use crate::lang::runtime::datatypes::states::States;
 use std::slice::Iter;
 use std::mem::swap;
 
-pub struct Runtime {
+use super::Runtime;
+
+pub struct NaiveRuntime {
     current_tick: HashMap<Coordinate, StateId>,
     next_tick: HashMap<Coordinate, StateId>,
     initial_dimensions: DimensionBounds,
@@ -24,38 +26,21 @@ pub struct Runtime {
     neighborhood: Neighborhood,
     tick: usize
 }
-impl Runtime {
-    pub fn new(initial_dimensions: DimensionBounds, boundary: BoundaryBlock, states: States, rules: Rules, neighborhood: Neighborhood) -> Self {
-        let mut static_state = None;
-        if let Some(name) = boundary.is_static() {
-            static_state = Some(*states.name_map().get(name).expect("States map is complete."))
-        }
-        let default_state = states.default_state();
-        Self {
-            current_tick: HashMap::new(),
-            next_tick: HashMap::new(),
-            initial_dimensions,
-            boundary,
-            static_state,
-            default_state,
-            rules,
-            neighborhood,
-            tick: 0
-        }
-    }
-    pub fn set_cell(&mut self, coord: Coordinate, state: StateId) -> Option<StateId> {
+impl Runtime for NaiveRuntime {
+    fn set_cell(&mut self, coord: Coordinate, state: StateId) -> Option<StateId> {
         self.current_tick.insert(coord, state)
     }
-    pub fn set_env(&mut self, environment: HashMap<Coordinate, StateId>) {
+    fn set_env(&mut self, environment: HashMap<Coordinate, StateId>) {
         self.current_tick = environment
     }
-    pub fn get_env(&self) -> HashMap<Coordinate, StateId> {
+    fn get_env(&self) -> HashMap<Coordinate, StateId> {
         self.current_tick.clone()
     }
-    pub fn get_state(&self, coord: Coordinate) -> Option<StateId> {
+    fn get_state(&self, coord: Coordinate) -> Option<StateId> {
         self.current_tick.get(&coord).map(|s| *s).or(self.default_state)
     }
-    pub fn run_tick(&mut self) {
+    fn run_tick(&mut self) -> Delta {
+        let mut delta = Vec::new();
         let mut schedule = self.current_tick.iter().map(|(c, _)| *c).collect::<Vec<_>>();
         while !schedule.is_empty() {
             let coord = schedule.pop().unwrap();
@@ -86,6 +71,7 @@ impl Runtime {
             if let Some(new_state) = self.rules.evaluate(state, neighborhood) {
                 if self.default_state.is_none() || new_state != self.default_state.unwrap() {
                     self.next_tick.insert(coord, new_state);
+                    delta.push((coord, new_state))
                 }
             } else if self.default_state.is_none() || state != self.default_state.unwrap() {
                 self.next_tick.insert(coord, state);
@@ -94,14 +80,35 @@ impl Runtime {
         swap(&mut self.current_tick, &mut self.next_tick);
         self.next_tick = HashMap::new();
         self.tick += 1;
+        delta
     }
-    pub fn run(&mut self, ticks: usize) {
+    fn run(&mut self, ticks: usize) {
         for t in 0..ticks {
             self.run_tick();
         }
     }
-    pub fn tick(&self) -> usize {
+    fn tick(&self) -> usize {
         self.tick
+    }
+}
+impl NaiveRuntime {
+    pub fn new(initial_dimensions: DimensionBounds, boundary: BoundaryBlock, states: States, rules: Rules, neighborhood: Neighborhood) -> Self {
+        let mut static_state = None;
+        if let Some(name) = boundary.is_static() {
+            static_state = Some(*states.name_map().get(name).expect("States map is complete."))
+        }
+        let default_state = states.default_state();
+        Self {
+            current_tick: HashMap::new(),
+            next_tick: HashMap::new(),
+            initial_dimensions,
+            boundary,
+            static_state,
+            default_state,
+            rules,
+            neighborhood,
+            tick: 0
+        }
     }
 }
 
@@ -334,7 +341,7 @@ mod test {
         state_map.insert("A".into(), 0);
         state_map.insert("B".into(), 1);
 
-        let mut rt = Runtime::new(
+        let mut rt = NaiveRuntime::new(
             DimensionBounds1D { x: (-0, 0)},
             BoundaryBlock::Void,
             States::new(
@@ -372,7 +379,7 @@ mod test {
         state_map.insert("A".into(), 0);
         state_map.insert("B".into(), 1);
 
-        let mut rt = Runtime::new(
+        let mut rt = NaiveRuntime::new(
             DimensionBounds1D { x: (-5, 5) },
             BoundaryBlock::Infinite,
             States::new(
@@ -419,7 +426,7 @@ mod test {
         state_map.insert("A".into(), 0);
         state_map.insert("B".into(), 1);
 
-        let mut rt = Runtime::new(
+        let mut rt = NaiveRuntime::new(
             DimensionBounds1D { x: (-1, 1) },
             BoundaryBlock::Static(Some("A".into())),
             States::new(
