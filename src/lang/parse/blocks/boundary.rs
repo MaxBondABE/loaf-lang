@@ -8,6 +8,19 @@ pub enum BoundaryBlock {
     Infinite,
     Static(Option<String>)
 }
+
+impl BoundaryBlock {
+    pub fn is_finite(&self) -> bool {
+        *self != BoundaryBlock::Infinite
+    }
+    pub fn is_static(&self) -> Option<&String> {
+        match self {
+            BoundaryBlock::Static(name) => name.as_ref(),
+            _ => None
+        }
+    }
+}
+
 impl TryFrom<LoafPair<'_>> for BoundaryBlock {
     type Error = ParseError;
 
