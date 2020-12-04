@@ -1,4 +1,5 @@
-use crate::lang::runtime::naive::{Coordinate, StateId};
+use crate::lang::runtime::datatypes::coords::Coordinate;
+use crate::lang::runtime::StateId;
 
 pub mod render2d;
 

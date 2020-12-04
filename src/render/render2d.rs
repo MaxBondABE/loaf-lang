@@ -1,7 +1,7 @@
 use image::{Rgb, RgbImage};
 use std::{collections::HashMap, fs::create_dir, path::Path};
-use crate::lang::runtime::naive::{Coordinate, DimensionBounds};
-use crate::lang::runtime::naive::StateId;
+use crate::lang::runtime::datatypes::coords::{Coordinate, DimensionBounds};
+use crate::lang::runtime::StateId;
 use crate::render::Output;
 
 use super::Delta;
