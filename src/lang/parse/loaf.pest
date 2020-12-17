@@ -61,7 +61,7 @@ builtin_environments = { (env_1D | env_2D | env_3D) ~ env_arguments? }
 edge = { "1" }
 no_edge = { "0" }
 row = { (edge | no_edge)+ ~ newline }
-adjacency_matrix = { lb ~ row+ ~ rb }
+adjacency_matrix = { lb ~ newline ~ row+ ~ rb }
 environment_block = { env_blk_name ~ gets ~ (builtin_environments|adjacency_matrix) ~ end_of_block }
 
 // Neighborhood Block
@@ -80,13 +80,17 @@ directed_negative = { dimension ~ directed_negative_name ~ integer }
 directed_edge = _{ directed_positive | directed_negative }
 undirected_edge = { dimension ~ undirected_name ~ integer }
 undirected_circle = { dimension ~ within ~ integer }
-neighborhood_rule = _{ directed_edge | undirected_edge | undirected_circle }
+simple_neighborhood_rule = _{ directed_edge | undirected_edge | undirected_circle }
+compound_neighborhood_rule = { simple_neighborhood_rule ~ ("and" ~ (newline)? ~ simple_neighborhood_rule)+ }
+neighborhood_rule = _{ compound_neighborhood_rule | simple_neighborhood_rule }
 neighborhood_rules = { neighborhood_rule ~ (newline+ ~ neighborhood_rule)* }
 
 neighborhood_block = {
     neighborhood_blk_name ~ gets ~ (
-        builtin_neighborhood |
-        (lb ~ newline* ~ neighborhood_rules ~ newline* ~ rb ~ end_of_block)
+        (
+            builtin_neighborhood  |
+            (lb ~ newline* ~ neighborhood_rules ~ newline* ~ rb)
+        ) ~ end_of_block
     )
 }
 
@@ -142,11 +146,13 @@ start = _{ SOI ~ newline* }
 end = _{ newline* ~ EOI }
 program = _{
     start ~ (
-        environment_block |
-        neighborhood_block |
-        boundary_block |
-        state_block |
-        rule_block
+        (
+            environment_block |
+            neighborhood_block |
+            boundary_block |
+            state_block |
+            rule_block
+        ) ~ newline*
     )* ~
     end
 }

@@ -1,12 +1,31 @@
-use crate::lang::parse::{LoafPair, Rule, Error as ParseError};
+use crate::lang::{runtime::datatypes::coords::DimensionBounds, parse::{LoafPair, Rule, Error as ParseError}};
 use std::convert::TryFrom;
 use std::str::FromStr;
+
+// TODO constants module
+const DEFAULT_DIMENSION:usize = 100;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum EnvironmentBlock {
     Grid1D { x: Option<usize> },
     Grid2D { x: Option<usize>, y: Option<usize>},
     Grid3D { x: Option<usize>, y: Option<usize>, z: Option<usize>}
+}
+
+impl EnvironmentBlock {
+    pub fn dimensions(&self) -> DimensionBounds {
+        match self {
+            EnvironmentBlock::Grid1D { x } => {
+                DimensionBounds::DimensionBounds1D { x: bounds(*x) }
+            }
+            EnvironmentBlock::Grid2D { x, y } => {
+                DimensionBounds::DimensionBounds2D { x: bounds(*x), y: bounds(*y) }
+            }
+            EnvironmentBlock::Grid3D { x, y, z } => {
+                DimensionBounds::DimensionBounds3D { x: bounds(*x), y: bounds(*y), z: bounds(*z) }
+            }
+        }
+    }
 }
 impl TryFrom<LoafPair<'_>> for EnvironmentBlock {
     type Error = ParseError;
@@ -68,6 +87,12 @@ impl TryFrom<LoafPair<'_>> for EnvironmentBlock {
             _ => unreachable!()
         }
     }
+}
+
+fn bounds(dim: Option<usize>) -> (isize, isize) {
+    let dim = (dim.unwrap_or(DEFAULT_DIMENSION)) as isize;
+    let half = dim/2;
+    (-half, dim-half)
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-use crate::lang::parse::blocks::neighborhood::{NeighborhoodRule, Dimension};
+use crate::lang::parse::blocks::neighborhood::{Dimension, NeighborhoodBlock, NeighborhoodRule};
 use crate::lang::runtime::datatypes::coords::Coordinate;
 use std::slice::Iter;
 
@@ -6,7 +6,13 @@ pub struct Neighborhood {
     rules: Vec<NeighborhoodRule>
 }
 impl Neighborhood {
-    pub fn new(rules: Vec<NeighborhoodRule>) -> Self { Self { rules } }
+    pub fn new(rules: Vec<NeighborhoodRule>) -> Self {
+        println!("rules {:?}", &rules);
+        Self { rules }
+    }
+    pub fn from_block(block: NeighborhoodBlock) -> Self {
+        Self::new(block.into_rules())
+    }
     pub fn neighbors(&self, starting_coordinate: Coordinate) -> NeighborhoodIter {
         NeighborhoodIter::new(starting_coordinate, self.rules.iter())
     }
@@ -85,7 +91,27 @@ impl Iterator for NeighborhoodIter<'_> {
                     }
                 }
             }
-            NeighborhoodRule::UndirectedCircle { .. } => unimplemented!()
+            NeighborhoodRule::UndirectedCircle { .. } => unimplemented!(),
+            NeighborhoodRule::Compound (child_rules) => {
+                // FIXME filled with hacks, hacks on hacks.
+                assert!(!child_rules.is_empty()); // FIXME can't handle empty rules - filter them out in prior step
+                let mut rule_queue: Vec<NeighborhoodRule> = child_rules.clone().into_iter().rev().collect();
+                let rule = rule_queue.pop().expect("Should contain at least 1 rule.");
+
+                let mut coord_queue: Vec<Coordinate> = NeighborhoodIter::new(self.starting_coordinate, vec!(rule).iter()).collect();
+
+                for rule in rule_queue {
+                    let mut new_coords = Vec::new();
+                    for coord in coord_queue {
+                        for resulting_coord in NeighborhoodIter::new(coord, vec!(rule.clone()).iter()) {
+                            new_coords.push(resulting_coord);
+                        }
+                    }
+                    coord_queue = new_coords;
+                }
+                self.queue.append(&mut coord_queue);
+                self.queue.pop()
+            }
         }
     }
 }
@@ -94,6 +120,7 @@ impl Iterator for NeighborhoodIter<'_> {
 mod tests {
     use super::*;
     use crate::lang::runtime::datatypes::coords::Coordinate::*;
+    use crate::lang::parse::blocks::neighborhood::MOORE_RULES;
     use std::collections::HashSet;
 
     const COORD_1D: Coordinate = Coordinate1D { x: 10 };
@@ -450,6 +477,69 @@ mod tests {
                 Coordinate3D { x: 10, y: 20, z: 31 }
             ))
         );
+    }
+
+    #[test]
+    pub fn compound() {
+        let neighborhood = Neighborhood::new(vec!(
+            NeighborhoodRule::Compound(vec!(
+                    NeighborhoodRule::UndirectedEdge { dimension: Dimension::X, magnitude: 1},
+                    NeighborhoodRule::UndirectedEdge { dimension: Dimension::Y, magnitude: 1},
+            )),
+            NeighborhoodRule::Compound(vec!(
+                    NeighborhoodRule::UndirectedEdge { dimension: Dimension::Y, magnitude: 1},
+                    NeighborhoodRule::UndirectedEdge { dimension: Dimension::X, magnitude: 1},
+            ))
+        ));
+        assert_eq!(
+            to_set(neighborhood.neighbors(Coordinate2D { x: 0, y: 0}).collect()),
+            to_set(vec!(
+                Coordinate2D { x: 1, y: 1 },
+                Coordinate2D { x: -1, y: 1 },
+                Coordinate2D { x: -1, y: -1 },
+                Coordinate2D { x: 1, y: -1 }
+            ))
+        );
+    }
+
+    pub fn moore_2d() {
+        let neighborhood = Neighborhood::new(MOORE_RULES.clone());
+        assert_eq!(
+            to_set(neighborhood.neighbors(Coordinate2D { x: 0, y: 0}).collect()),
+            to_set(vec!(
+                // Von Neumann neighbors
+                Coordinate2D { x: 1, y: 0},
+                Coordinate2D { x: 0, y: 1},
+                Coordinate2D { x: -1, y: 0},
+                Coordinate2D { x: 0, y: -1},
+
+                // Corners
+                Coordinate2D { x: 1, y: 1 },
+                Coordinate2D { x: -1, y: 1 },
+                Coordinate2D { x: -1, y: -1 },
+                Coordinate2D { x: 1, y: -1 }
+            ))
+        );
+        assert_eq!(
+            neighborhood.neighbors(Coordinate2D { x: 0, y: 0}).collect::<Vec<_>>().len(),
+            vec!(
+                // Von Neumann neighbors
+                Coordinate2D { x: 1, y: 0},
+                Coordinate2D { x: 0, y: 1},
+                Coordinate2D { x: -1, y: 0},
+                Coordinate2D { x: 0, y: -1},
+
+                // Corners
+                Coordinate2D { x: 1, y: 1 },
+                Coordinate2D { x: -1, y: 1 },
+                Coordinate2D { x: -1, y: -1 },
+                Coordinate2D { x: 1, y: -1 }
+            ).len()
+        );
+        assert_eq!(
+            neighborhood.neighbors(Coordinate2D { x: 0, y: 0}).collect::<Vec<_>>().len(),
+            8
+        )
     }
 
     // Util

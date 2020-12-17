@@ -15,6 +15,8 @@ use std::mem::swap;
 
 use super::Runtime;
 
+use crate::lang::parse::blocks::neighborhood::MOORE_RULES;
+
 pub struct NaiveRuntime {
     current_tick: HashMap<Coordinate, StateId>,
     next_tick: HashMap<Coordinate, StateId>,
@@ -40,10 +42,16 @@ impl Runtime for NaiveRuntime {
         self.current_tick.get(&coord).map(|s| *s).or(self.default_state)
     }
     fn run_tick(&mut self) -> Delta {
+        println!("Running tick");
         let mut delta = Vec::new();
         let mut schedule = self.current_tick.iter().map(|(c, _)| *c).collect::<Vec<_>>();
         while !schedule.is_empty() {
             let coord = schedule.pop().unwrap();
+            println!("Coord: {:?}", coord);
+            println!("Neighborhood: {:?}", self.neighborhood.neighbors(coord).collect::<Vec<_>>());
+            println!("Neighborhood len: {:?}", self.neighborhood.neighbors(coord).collect::<Vec<_>>().len());
+            println!("moore Neighborhood: {:?}", Neighborhood::new(MOORE_RULES.clone()).neighbors(coord).collect::<Vec<_>>());
+            println!("moore Neighborhood len: {:?}", Neighborhood::new(MOORE_RULES.clone()).neighbors(coord).collect::<Vec<_>>().len());
             let mut neighborhood = Vec::new();
             for neighbor in self.neighborhood.neighbors(coord) {
                 if self.boundary.is_finite() && !self.initial_dimensions.contains(neighbor) {
@@ -350,7 +358,7 @@ mod test {
                 HashMap::new(),
                 None,
             ),
-            Rules::new(
+            Rules::from_block(
                 RulesBlock::new(
                     vec!(
                         TransitionRule {
@@ -388,7 +396,7 @@ mod test {
                 HashMap::new(),
                 Some(0),
             ),
-            Rules::new(
+            Rules::from_block(
                 RulesBlock::new(
                     vec!(
                         TransitionRule {
@@ -435,7 +443,7 @@ mod test {
                 HashMap::new(),
                 Some(0),
             ),
-            Rules::new(
+            Rules::from_block(
                 RulesBlock::new(
                     vec!(
                         TransitionRule {

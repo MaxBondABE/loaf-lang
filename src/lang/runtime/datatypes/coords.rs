@@ -1,5 +1,7 @@
 use std::{iter::Repeat, iter::Zip, iter::repeat, ops::RangeInclusive};
 
+use crate::lang::parse::blocks::neighborhood::Dimension;
+
 use self::Coordinate::*;
 use DimensionBounds::*;
 

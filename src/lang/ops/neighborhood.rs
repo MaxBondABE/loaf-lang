@@ -85,7 +85,8 @@ impl Iterator for NeighborhoodIter<'_> {
                     }
                 }
             }
-            NeighborhoodRule::UndirectedCircle { .. } => unimplemented!()
+            NeighborhoodRule::UndirectedCircle { .. } => unimplemented!(),
+            NeighborhoodRule::Compound { .. } => unimplemented!()
         }
     }
 }

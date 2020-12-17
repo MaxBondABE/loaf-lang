@@ -1,6 +1,33 @@
 use std::convert::{TryFrom, TryInto};
 use crate::lang::parse::{LoafPair, Rule, Error as ParseError};
 use std::str::FromStr;
+#[macro_use]
+use lazy_static::lazy_static;
+
+// TODO other dims (is 2d only)
+lazy_static!(
+    pub static ref MOORE_RULES: Vec<NeighborhoodRule> = {
+        vec!(
+            NeighborhoodRule::UndirectedEdge { dimension: Dimension::All, magnitude: 1},
+            NeighborhoodRule::Compound (vec!(
+                NeighborhoodRule::UndirectedEdge { dimension: Dimension::X, magnitude: 1},
+                NeighborhoodRule::UndirectedEdge { dimension: Dimension::Y, magnitude: 1},
+            )),
+            NeighborhoodRule::Compound (vec!(
+                NeighborhoodRule::UndirectedEdge { dimension: Dimension::Y, magnitude: 1},
+                NeighborhoodRule::UndirectedEdge { dimension: Dimension::X, magnitude: 1},
+            ))
+        )
+    };
+);
+
+lazy_static!(
+    pub static ref VON_NEUMANN_RULES: Vec<NeighborhoodRule> = {
+        vec!(
+            NeighborhoodRule::UndirectedEdge { dimension: Dimension::All, magnitude: 1},
+        )
+    };
+);
 
 // TODO compound rules
 
@@ -9,6 +36,16 @@ pub enum NeighborhoodBlock {
     Moore,
     VonNeumann,
     Custom(Vec<NeighborhoodRule>)
+}
+
+impl NeighborhoodBlock {
+    pub fn into_rules(self) -> Vec<NeighborhoodRule> {
+        match self {
+            NeighborhoodBlock::Moore => MOORE_RULES.clone(),
+            NeighborhoodBlock::VonNeumann => VON_NEUMANN_RULES.clone(),
+            NeighborhoodBlock::Custom(rules) => rules
+        }
+    }
 }
 impl TryFrom<LoafPair<'_>> for NeighborhoodBlock {
     type Error = ParseError;
@@ -38,17 +75,25 @@ impl TryFrom<LoafPair<'_>> for NeighborhoodBlock {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum NeighborhoodRule {
     UndirectedEdge {dimension: Dimension, magnitude: isize},
     DirectedEdge { dimension: Dimension, magnitude: isize},
-    UndirectedCircle {dimension: Dimension, magnitude: isize}
+    UndirectedCircle {dimension: Dimension, magnitude: isize},
+    Compound (Vec<NeighborhoodRule>)
 }
 impl TryFrom<LoafPair<'_>> for NeighborhoodRule {
     type Error = ParseError;
 
     fn try_from(pair: LoafPair<'_>) -> Result<Self, Self::Error> {
         let rule = pair.as_rule();
+        if rule == Rule::compound_neighborhood_rule {
+            let mut child_rules = Vec::new();
+            for child in pair.into_inner() {
+                child_rules.push(child.try_into()?);
+            }
+            return Ok(Self::Compound(child_rules));
+        }
         let mut children = pair.into_inner();
         let dimension: Dimension = children
             .next().expect("Neighborhood rules should have exactly 2 children.").try_into()?;
@@ -68,7 +113,7 @@ impl TryFrom<LoafPair<'_>> for NeighborhoodRule {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Dimension {
     X,
     Y,
@@ -225,6 +270,45 @@ mod test {
                 dimension: Dimension::All,
                 magnitude: 1,
             }
+        )))
+    }
+
+    #[test]
+    fn compound() {
+        let nb = LoafParser::parse(Rule::neighborhood_block, "neighborhood := { x +- 1 and y +- 2 }");
+        assert!(nb.is_ok()); // Parsed successfully
+        let nb: Result<NeighborhoodBlock,_> = nb.unwrap().next().unwrap().try_into();
+        assert!(nb.is_ok()); // Converted successfully
+        assert_eq!(nb.unwrap(), NeighborhoodBlock::Custom(vec!(
+            NeighborhoodRule::Compound (vec!(
+                NeighborhoodRule::UndirectedEdge { dimension: Dimension::X, magnitude: 1 },
+                NeighborhoodRule::UndirectedEdge { dimension: Dimension::Y, magnitude: 2 }
+            ))
+        )))
+    }
+
+    #[test]
+    fn multiple_rule_types() {
+        let nb = LoafParser::parse(Rule::neighborhood_block,
+        r#"neighborhood := {
+            x +- 1
+            y + 2
+            z - 3
+            * within 10
+            x +- 1 and y +- 2
+        }"#);
+        assert!(nb.is_ok()); // Parsed successfully
+        let nb: Result<NeighborhoodBlock,_> = nb.unwrap().next().unwrap().try_into();
+        assert!(nb.is_ok()); // Converted successfully
+        assert_eq!(nb.unwrap(), NeighborhoodBlock::Custom (vec!(
+            NeighborhoodRule::UndirectedEdge { dimension: Dimension::X, magnitude: 1 },
+            NeighborhoodRule::DirectedEdge { dimension: Dimension::Y, magnitude: 2 },
+            NeighborhoodRule::DirectedEdge { dimension: Dimension::Z, magnitude: -3 },
+            NeighborhoodRule::UndirectedCircle { dimension: Dimension::All, magnitude: 10 },
+            NeighborhoodRule::Compound (vec!(
+                NeighborhoodRule::UndirectedEdge { dimension: Dimension::X, magnitude: 1 },
+                NeighborhoodRule::UndirectedEdge { dimension: Dimension::Y, magnitude: 2 }
+            ))
         )))
     }
 }

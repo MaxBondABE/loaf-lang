@@ -10,7 +10,7 @@ pub struct Rules {
     rules: HashMap<FromState, Vec<(ToState, Box<dyn RuleOperation>)>>
 }
 impl Rules {
-    pub fn new(block: RulesBlock, state_map: &StateMap) -> Self {
+    pub fn from_block(block: RulesBlock, state_map: &StateMap) -> Self {
         let mut rules = HashMap::new();
         for rule in block.into_vec() {
             let from = *state_map.get(&rule.from).expect("State map should be complete.");
@@ -424,7 +424,7 @@ mod test {
 
     #[test]
     fn simple_rules_with_transition() {
-        let rules = Rules::new(
+        let rules = Rules::from_block(
             RulesBlock::new(vec!(
                 TransitionRule {
                     from: "A".into(),
@@ -442,7 +442,7 @@ mod test {
 
     #[test]
     fn simple_rules_without_transition() {
-        let rules = Rules::new(
+        let rules = Rules::from_block(
             RulesBlock::new(vec!(
                 TransitionRule {
                     from: "A".into(),
@@ -461,7 +461,7 @@ mod test {
 
     #[test]
     fn census_rule_with_transition() {
-        let rules = Rules::new(
+        let rules = Rules::from_block(
             RulesBlock::new(vec!(
                 TransitionRule {
                     from: "A".into(),
@@ -479,7 +479,7 @@ mod test {
 
     #[test]
     fn census_rule_without_transition() {
-        let rules = Rules::new(
+        let rules = Rules::from_block(
             RulesBlock::new(vec!(
                 TransitionRule {
                     from: "A".into(),
