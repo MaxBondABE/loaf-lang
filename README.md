@@ -1,6 +1,5 @@
 Loaf: A language for Cellular Automata
 --------------------------------------
-politically activei 
 Loaf is a programming language for expressing Cellular Automata rules.
 
 Here is an example of Conway's Game of Life, written in Loaf.
