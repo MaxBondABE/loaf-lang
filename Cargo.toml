@@ -1,13 +1,11 @@
 [package]
 name = "loaf-lang"
-version = "0.1.0"
+version = "0.0.0"
 authors = ["MaxBondABE <max.o.bond@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-pest = "2.1.3"
-pest_derive = "2.1.0"
-lazy_static = "1.4.0"
-image = "0.23.12"
+itertools = "0.10.0"
+dyn-clone = "1.0.4"
 
 [dev-dependencies]

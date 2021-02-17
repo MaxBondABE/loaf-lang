@@ -1,0 +1,214 @@
+use std::iter::Chain;
+use std::marker::PhantomData;
+
+use dyn_clone::DynClone;
+use itertools::Itertools; // unique, cartesian_product
+
+use crate::datatypes::coords::{Coordinate, Dimension, OffsetIterator};
+
+#[derive(Debug, Clone)]
+pub struct Ruleset<C> {
+    rules: Vec<Rule<C>>,
+    _marker: PhantomData<C>,
+}
+
+impl<C> Ruleset<C> {
+    pub fn new(rules: Vec<Rule<C>>) -> Self {
+        Self {
+            rules,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<C: Coordinate + 'static> IntoIterator for Ruleset<C> {
+    type Item = C;
+    type IntoIter = RulesetIterator<C>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        RulesetIterator::new(self.rules)
+    }
+}
+
+pub struct RulesetIterator<C> {
+    rules_iter: Box<dyn Iterator<Item = C>>,
+}
+impl<C: Coordinate + 'static> RulesetIterator<C> {
+    pub fn new(rules: Vec<Rule<C>>) -> Self {
+        let rules_iter = Box::new(
+            rules
+                .into_iter()
+                .map(|r| r.iter())
+                .flatten()
+                .unique() // Don't double count neighbors
+                .filter(|c| *c != C::default()), // Don't allow origin - no one is their own neighbor
+        );
+        Self { rules_iter }
+    }
+}
+impl<C> Iterator for RulesetIterator<C> {
+    type Item = C;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.rules_iter.next()
+    }
+}
+
+// TODO implement CompoundRule iteratively with Vec<Rule<C>> rather than
+// recursively with left & right rules
+#[derive(Debug, Clone)]
+pub enum Rule<C> {
+    UndirectedEdge {
+        dimension: Dimension,
+        magnitude: isize,
+    },
+    DirectedEdge {
+        dimension: Dimension,
+        magnitude: isize,
+    },
+    UndirectedCircle {
+        dimension: Dimension,
+        magnitude: isize,
+    },
+    CompoundRule {
+        left: Box<Rule<C>>,
+        right: Box<Rule<C>>,
+    },
+
+    Marker(PhantomData<C>),
+}
+
+impl<C> Rule<C> {
+    pub fn undirected_edge(dimension: Dimension, magnitude: isize) -> Rule<C> {
+        Rule::UndirectedEdge {
+            dimension,
+            magnitude,
+        }
+    }
+    pub fn directed_edge(dimension: Dimension, magnitude: isize) -> Rule<C> {
+        Rule::DirectedEdge {
+            dimension,
+            magnitude,
+        }
+    }
+    pub fn undirected_circle(dimension: Dimension, magnitude: isize) -> Rule<C> {
+        Rule::UndirectedCircle {
+            dimension,
+            magnitude,
+        }
+    }
+    pub fn compound_rule(left: Rule<C>, right: Rule<C>) -> Rule<C> {
+        Rule::CompoundRule {
+            left: Box::new(left),
+            right: Box::new(right),
+        }
+    }
+}
+
+impl<C: Coordinate + 'static> Rule<C> {
+    fn undirected_edge_iter(
+        dimension: Dimension,
+        magnitude: isize,
+    ) -> Chain<OffsetIterator<C>, OffsetIterator<C>> {
+        C::default()
+            .offset(dimension, magnitude)
+            .chain(C::default().offset(dimension, -magnitude))
+    }
+    fn directed_edge_iter(dimension: Dimension, magnitude: isize) -> OffsetIterator<C> {
+        C::default().offset(dimension, magnitude)
+    }
+    fn undirected_circle_iter(
+        dimension: Dimension,
+        magnitude: isize,
+    ) -> impl Iterator<Item = C> + Clone {
+        // FIXME doesn't actually make a circle yet
+        (-magnitude..0)
+            .chain(1..=magnitude)
+            .map(move |value| C::default().offset(dimension, value))
+            .flatten()
+    }
+    fn compound_rule_iter(left: &Rule<C>, right: &Rule<C>) -> impl Iterator<Item = C> + Clone {
+        left.iter()
+            .cartesian_product(right.iter())
+            .map(|(a, b)| a + b)
+    }
+
+    fn iter(&self) -> Box<dyn RuleIterTrait<C>> {
+        match self {
+            Rule::UndirectedEdge {
+                dimension,
+                magnitude,
+            } => Box::new(Self::undirected_edge_iter(*dimension, *magnitude)),
+            Rule::DirectedEdge {
+                dimension,
+                magnitude,
+            } => Box::new(Self::directed_edge_iter(*dimension, *magnitude)),
+            Rule::UndirectedCircle {
+                dimension,
+                magnitude,
+            } => Box::new(Self::directed_edge_iter(*dimension, *magnitude)),
+            Rule::CompoundRule { left, right } => Box::new(Self::compound_rule_iter(left, right)),
+            Rule::Marker(..) => unreachable!(),
+        }
+    }
+}
+
+trait RuleIterTrait<C: Coordinate>: Iterator<Item = C> + DynClone {}
+dyn_clone::clone_trait_object!(<C> RuleIterTrait<C> where C: Coordinate);
+impl<C: Coordinate, T: Iterator<Item = C> + Clone> RuleIterTrait<C> for T {}
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+    use crate::datatypes::coords::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn ruleset_iter_does_not_yield_same_coord_twice() {
+        let rule1: Rule<Coordinate1D> = Rule::directed_edge(Dimension::X, 1);
+        let rule2: Rule<Coordinate1D> = Rule::undirected_edge(Dimension::X, 1);
+        let coordinate = Coordinate1D::new(1); // Will be generated by both rules
+        let ruleset = Ruleset::new(vec![rule1, rule2]);
+        assert_eq!(ruleset.into_iter().filter(|c| *c == coordinate).count(), 1)
+    }
+
+    #[test]
+    fn undirected_edge_1d() {
+        let rule: Rule<Coordinate1D> = Rule::undirected_edge(Dimension::X, 1);
+        assert_eq!(
+            rule.iter().collect::<HashSet<_>>(),
+            vec!(Coordinate1D::new(-1), Coordinate1D::new(1))
+                .into_iter()
+                .collect::<HashSet<_>>()
+        )
+    }
+
+    #[test]
+    fn directed_edge_1d() {
+        let rule: Rule<Coordinate1D> = Rule::directed_edge(Dimension::X, 1);
+        assert_eq!(
+            rule.iter().collect::<HashSet<_>>(),
+            vec!(Coordinate1D::new(1))
+                .into_iter()
+                .collect::<HashSet<_>>()
+        )
+    }
+
+    #[test]
+    fn compound_rules_2d() {
+        let rule1: Rule<Coordinate2D> = Rule::undirected_edge(Dimension::X, 1);
+        let rule2: Rule<Coordinate2D> = Rule::undirected_edge(Dimension::Y, 1);
+        let compound_rule = Rule::compound_rule(rule1, rule2);
+        assert_eq!(
+            compound_rule.iter().collect::<HashSet<_>>(),
+            vec!(
+                Coordinate2D::new(1, 1),
+                Coordinate2D::new(-1, 1),
+                Coordinate2D::new(-1, -1),
+                Coordinate2D::new(1, -1),
+            )
+            .into_iter()
+            .collect::<HashSet<_>>()
+        )
+    }
+}
